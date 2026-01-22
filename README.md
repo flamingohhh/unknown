@@ -1,1 +1,633 @@
-# unknown
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GVG Optimal Attack Planner (Kraken Barriers, 2 Rounds)</title>
+  <style>
+    :root{
+      --border:#ddd; --text:#111; --muted:#666; --bg:#fff;
+      --astra:#2563eb; --luna:#7c3aed; --sola:#16a34a; --rex:#dc2626;
+      --w3:#e11d48; --w2:#f59e0b; --w1:#22c55e; --w0:#64748b;
+    }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 18px; color:var(--text); background:var(--bg); }
+    h1 { margin: 0 0 10px; font-size: 20px; }
+    h2 { margin: 16px 0 8px; font-size: 16px; }
+    .muted { color:var(--muted); font-size:12px; line-height:1.4; }
+    .card { border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin: 12px 0; background:#fff; box-shadow: 0 1px 0 rgba(0,0,0,.03); }
+    .grid { display: grid; gap: 10px; grid-template-columns: repeat(12, minmax(0,1fr)); align-items: start; }
+    .span-3 { grid-column: span 3; }
+    .span-6 { grid-column: span 6; }
+    .span-12 { grid-column: span 12; }
+    label { display:block; font-size: 12px; color:#333; margin-bottom:6px; }
+    input, select { width: 100%; padding: 8px 10px; border:1px solid #cfcfcf; border-radius:10px; font-size: 13px; background:#fff; }
+    input[type="number"]{ text-align:center; }
+    button { padding: 10px 12px; border: 0; border-radius: 12px; background:#111; color:#fff; font-weight: 650; cursor: pointer; }
+    button:hover { opacity: .92; }
+    pre { background:#0b0b0b; color:#eaeaea; padding: 12px; border-radius: 12px; overflow:auto; white-space: pre-wrap; }
+    .ok { color:#0b7a0b; font-weight:700; }
+    .bad { color:#b00020; font-weight:700; }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding:2px 10px; border-radius:999px; background:#f4f4f5; font-size:12px; border:1px solid #e6e6e7; }
+    .dot { width:10px; height:10px; border-radius:999px; display:inline-block; }
+    .dot.astra{ background:var(--astra); } .dot.luna{ background:var(--luna); } .dot.sola{ background:var(--sola); } .dot.rex{ background:var(--rex); }
+
+    .cityCard{ border-left: 8px solid transparent; }
+    .cityCard.astra{ border-left-color: var(--astra); }
+    .cityCard.luna{ border-left-color: var(--luna); }
+    .cityCard.sola{ border-left-color: var(--sola); }
+    .cityCard.rex{ border-left-color: var(--rex); }
+    .cityTitleRow{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .cityTitle{ display:flex; align-items:center; gap:10px; }
+    .cityTitle h3{ margin:0; font-size:15px; }
+    .mini{ font-size:12px; color:var(--muted); }
+
+    .kchip{ display:inline-flex; align-items:center; gap:6px; padding: 4px 10px; border-radius: 999px; border: 1px solid #e6e6e7; background:#fafafa; font-size:12px; font-weight:650; }
+    .kchip .kdot{ width:10px; height:10px; border-radius:999px; display:inline-block; }
+    .k3 .kdot{ background:var(--w3); } .k2 .kdot{ background:var(--w2); } .k1 .kdot{ background:var(--w1); } .k0 .kdot{ background:var(--w0); }
+    .k3{ color:var(--w3); } .k2{ color:var(--w2); } .k1{ color:var(--w1); } .k0{ color:var(--w0); }
+
+    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    .levelBox{ border:1px solid #e6e6e7; border-radius:12px; padding:10px; background:#fcfcfd; }
+    .levelBoxHeader{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px; flex-wrap:wrap; }
+    .levelGrid{ display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; }
+    .helperLine{ margin-top:8px; font-size:12px; }
+    .helperLine.ok{ color:#0b7a0b; font-weight:650; }
+    .helperLine.bad{ color:#b00020; font-weight:650; }
+  </style>
+</head>
+<body>
+<h1>GVG Optimal Attack Planner</h1>
+<div class="muted">
+  <span class="pill"><span class="dot" style="background:#111"></span>2 rounds</span>
+  <span class="pill"><span class="dot" style="background:#111"></span>10 attacks per attacker per round (fixed)</span>
+  <span class="pill"><span class="dot" style="background:#111"></span>Round 1 MUST spend all attacks (any remainder is dumped into Rex progress)</span>
+  <span class="pill"><span class="dot" style="background:#111"></span>Barrier Kraken must die first in every city</span>
+  <span class="pill"><span class="dot" style="background:#111"></span>NEW: Rex barrier structure must be destroyed after Rex barrier Kraken before any other Rex target is attackable</span>
+  <span class="pill"><span class="dot" style="background:#111"></span>Targets can be partially damaged across rounds</span>
+</div>
+
+<div class="card">
+  <h2>Attackers</h2>
+  <div class="grid">
+    <div class="span-3">
+      <label>Number of attackers</label>
+      <input id="attackers" type="number" value="44" min="1" />
+    </div>
+    <div class="span-9">
+      <div class="muted" style="margin-top:28px;">
+        Per-round budget = attackers × 10. Total available over 2 rounds = perRound × 2.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>City Setup</h2>
+  <div class="muted">
+    Limits (max defender slots):
+    <span class="pill"><span class="dot astra"></span>Astra=11</span>
+    <span class="pill"><span class="dot luna"></span>Luna=11</span>
+    <span class="pill"><span class="dot sola"></span>Sola=13</span>
+    <span class="pill"><span class="dot rex"></span>Rex=15</span>
+    — Barrier Kraken (if present) consumes 1 slot.
+    <br/><br/>
+    Kraken colors:
+    <span class="kchip k3"><span class="kdot"></span>3w</span>
+    <span class="kchip k2"><span class="kdot"></span>2w</span>
+    <span class="kchip k1"><span class="kdot"></span>1w</span>
+    <span class="kchip k0"><span class="kdot"></span>0w</span>
+  </div>
+  <div id="cities"></div>
+
+  <div class="grid" style="margin-top: 10px;">
+    <div class="span-12">
+      <button id="calcBtn">Calculate best plan</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Output</h2>
+  <div id="status" class="muted">Press “Calculate best plan”.</div>
+  <pre id="out"></pre>
+</div>
+
+<script>
+  /** Fixed per-round attacks */
+  const ATTACKS_PER_ATTACKER_PER_ROUND = 10;
+
+  /** Tables */
+  const NORMAL_DEF_COST = { "3w":10, "2w":15, "1w":20, "0w":60 }; // subcities + Rex barrier Kraken uses old initial table
+  const REX_OTHER_DEF_COST_BY_ALIVE = {
+    3: { "3w":100, "2w":150, "1w":200, "0w":600 },
+    2: { "3w":25,  "2w":38,  "1w":50,  "0w":150 },
+    1: { "3w":15,  "2w":22,  "1w":28,  "0w":75  },
+    0: { "3w":10,  "2w":15,  "1w":20,  "0w":60  }
+  };
+  const CITY_STRUCT = {
+    Astra: { outposts:7, camps:3, barrier:1 },
+    Luna:  { outposts:7, camps:3, barrier:1 },
+    Sola:  { outposts:9, camps:3, barrier:1 },
+    Rex:   { outposts:11, camps:3, barrier:1 }
+  };
+  const CITY_LIMITS = { Astra:11, Luna:11, Sola:13, Rex:15 };
+  const STRUCT_COST = { outpost:5, camp:10, barrier:5 };
+  const REX_STRUCT_COST_BY_ALIVE = {
+    3: { outpost:50, camp:100, barrier:5 },
+    2: { outpost:13, camp:25,  barrier:5 },
+    1: { outpost:8,  camp:15,  barrier:5 },
+    0: { outpost:5,  camp:10,  barrier:5 }
+  };
+
+  const W_LEVELS = ["3w","2w","1w","0w"];
+  const CITY_ORDER = ["Astra","Luna","Sola","Rex"];
+  const SUBCITIES = ["Astra","Luna","Sola"];
+  const CITY_CLASS = { Astra:"astra", Luna:"luna", Sola:"sola", Rex:"rex" };
+
+  /** UI */
+  function barrierSelect(id){
+    return `
+    <select id="${id}">
+      <option value="none">No barrier Kraken</option>
+      <option value="3w">Barrier Kraken 3w</option>
+      <option value="2w">Barrier Kraken 2w</option>
+      <option value="1w">Barrier Kraken 1w</option>
+      <option value="0w">Barrier Kraken 0w</option>
+    </select>
+  `;
+  }
+  function levelChip(w){
+    const cls = w === "3w" ? "k3" : w === "2w" ? "k2" : w === "1w" ? "k1" : "k0";
+    return `<span class="kchip ${cls}"><span class="kdot"></span>${w}</span>`;
+  }
+  function cityBlock(name){
+    const limit = CITY_LIMITS[name];
+    const defaults = {
+      Astra: { barrier:"1w", other: {"3w":9,"2w":0,"1w":0,"0w":0} },
+      Luna:  { barrier:"1w", other: {"3w":9,"2w":0,"1w":0,"0w":0} },
+      Sola:  { barrier:"1w", other: {"3w":8,"2w":0,"1w":0,"0w":0} },
+      Rex:   { barrier:"1w", other: {"3w":14,"2w":0,"1w":0,"0w":0} },
+    }[name];
+    const cls = CITY_CLASS[name];
+    return `
+    <div class="card cityCard ${cls}">
+      <div class="cityTitleRow">
+        <div class="cityTitle">
+          <span class="dot ${cls}"></span>
+          <h3>${name}</h3>
+        </div>
+        <div class="mini">Max slots: ${limit} (barrier uses 1 if present)</div>
+      </div>
+      <div class="grid">
+        <div class="span-6">
+          <label>Barrier Kraken (gatekeeper)</label>
+          ${barrierSelect(`${name}_barrier`)}
+          <div class="muted" style="margin-top:6px;">
+            If present, must die before anything else in <b>${name}</b> can be attacked.
+          </div>
+        </div>
+        <div class="span-6">
+          <div class="levelBox">
+            <div class="levelBoxHeader">
+              <div><b>Other Krakens</b> <span class="muted">(sum + barrier ≤ ${limit})</span></div>
+              <div class="row">${W_LEVELS.map(levelChip).join("")}</div>
+            </div>
+            <div class="levelGrid">
+              ${W_LEVELS.map(w => `
+                <div>
+                  <label>${levelChip(w)} count</label>
+                  <input id="${name}_other_${w}" type="number" min="0" value="${defaults.other[w]}" />
+                </div>
+              `).join("")}
+            </div>
+            <div class="helperLine" id="${name}_remaining"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  }
+  function clampInt(v, lo, hi){
+    v = Number.isFinite(v) ? Math.floor(v) : lo;
+    return Math.max(lo, Math.min(hi, v));
+  }
+  function getCitySetup(name){
+    const barrierVal = document.getElementById(`${name}_barrier`).value;
+    const barrier = (barrierVal === "none") ? null : barrierVal;
+    const other = {};
+    for (const w of W_LEVELS){
+      const raw = parseInt(document.getElementById(`${name}_other_${w}`).value,10);
+      other[w] = clampInt(raw, 0, 999);
+    }
+    return { barrier, other };
+  }
+  function totalDefenders(setup){
+    let sum = 0;
+    for (const w of W_LEVELS) sum += (setup.other[w]||0);
+    if (setup.barrier) sum += 1;
+    return sum;
+  }
+  function updateRemaining(name){
+    const setup = getCitySetup(name);
+    const used = totalDefenders(setup);
+    const limit = CITY_LIMITS[name];
+    const remaining = limit - used;
+    const el = document.getElementById(`${name}_remaining`);
+    if (remaining >= 0){
+      el.className = "helperLine ok";
+      el.innerHTML = `Slots used: <b>${used}</b> / ${limit} (remaining: <b>${remaining}</b>)`;
+    } else {
+      el.className = "helperLine bad";
+      el.innerHTML = `Too many defenders: <b>${used}</b> / ${limit} — reduce by <b>${-remaining}</b>`;
+    }
+  }
+  function mountUI(){
+    document.getElementById("cities").innerHTML = CITY_ORDER.map(cityBlock).join("");
+    for (const name of CITY_ORDER) document.getElementById(`${name}_barrier`).value = "1w";
+    for (const name of CITY_ORDER){
+      const ids = [ `${name}_barrier`, ...W_LEVELS.map(w=>`${name}_other_${w}`) ];
+      ids.forEach(id => document.getElementById(id).addEventListener("input", ()=>updateRemaining(name)));
+      updateRemaining(name);
+    }
+  }
+
+  /** Subcity full clear (barrier kraken gate only; structures included as a lump) */
+  function subcityStructureCost(city){
+    const c = CITY_STRUCT[city];
+    return c.outposts*STRUCT_COST.outpost + c.camps*STRUCT_COST.camp + c.barrier*STRUCT_COST.barrier;
+  }
+  function fullClearSubcity(city, setup){
+    const parts = [];
+    let total = 0;
+
+    if (setup.barrier){
+      const cost = NORMAL_DEF_COST[setup.barrier];
+      parts.push({ label:`Kill ${city} barrier Kraken (${setup.barrier})`, cost });
+      total += cost;
+    }
+    for (const w of W_LEVELS){
+      const n = setup.other[w] || 0;
+      if (n>0){
+        const cost = n * NORMAL_DEF_COST[w];
+        parts.push({ label:`Kill ${city} ${w} Krakens ×${n}`, cost });
+        total += cost;
+      }
+    }
+    const structCost = subcityStructureCost(city);
+    parts.push({ label:`Destroy ${city} structures (outposts/camps/barrier)`, cost: structCost });
+    total += structCost;
+
+    return { total, parts };
+  }
+
+  /**
+   * Build Rex targets with NEW gating:
+   * Gate A: Rex barrier Kraken (if present)
+   * Gate B: Rex barrier STRUCTURE (always exists, 1 unit)
+   * After BOTH are complete, you can hit other Rex defenders/structures.
+   *
+   * We represent everything as "work chunks" that are partially progress-able.
+   */
+  function buildRexWork(setupRex, aliveA1, aliveA2){
+    const work = [];
+
+    // Gate A: barrier Kraken (partial allowed)
+    if (setupRex.barrier){
+      const cost = NORMAL_DEF_COST[setupRex.barrier];
+      work.push({
+        stage: 0,
+        key: "rex_gate_kraken",
+        label: `Kill Rex barrier Kraken (${setupRex.barrier})`,
+        remaining: cost,
+        c1: 1, c2: 1, // per-attack cost equivalence (we spend raw attacks)
+        // stage 0 uses raw attacks; "cost" is remaining
+      });
+    }
+
+    // Gate B: Rex barrier structure (partial allowed)
+    // Barrier structure cost is always 5 (table says 5 in all alive states), but we keep it explicit
+    const barrierStructCostA1 = REX_STRUCT_COST_BY_ALIVE[aliveA1].barrier;
+    const barrierStructCostA2 = REX_STRUCT_COST_BY_ALIVE[aliveA2].barrier; // should be same
+    work.push({
+      stage: 1,
+      key: "rex_gate_barrier_struct",
+      label: `Destroy Rex barrier structure (aliveSub=${aliveA1}→${aliveA2})`,
+      remaining: barrierStructCostA1, // 5
+      c1: 1, c2: 1
+    });
+
+    // Stage 2: other defenders (unit chunks with per-unit remaining)
+    for (const w of W_LEVELS){
+      const n = setupRex.other[w] || 0;
+      if (n<=0) continue;
+      const per1 = REX_OTHER_DEF_COST_BY_ALIVE[aliveA1][w];
+      const per2 = REX_OTHER_DEF_COST_BY_ALIVE[aliveA2][w];
+      // expand into units to track "10 left after R1" properly and allow partial
+      for (let i=0;i<n;i++){
+        work.push({
+          stage: 2,
+          key: `rex_def_${w}_${i}`,
+          labelBase: `Kill Rex ${w} Kraken`,
+          w,
+          unitIndex: i,
+          remaining: per1,  // in R1, a unit takes per1 attacks total; partial allowed
+          per1,
+          per2
+        });
+      }
+    }
+
+    // Stage 2: outposts (11), camps (3), (exclude barrier structure because it's a gate stage=1)
+    const out1 = REX_STRUCT_COST_BY_ALIVE[aliveA1].outpost;
+    const out2 = REX_STRUCT_COST_BY_ALIVE[aliveA2].outpost;
+    for (let i=0;i<CITY_STRUCT.Rex.outposts;i++){
+      work.push({ stage:2, key:`rex_outpost_${i}`, labelBase:`Destroy Rex outpost`, unitIndex:i, remaining: out1, per1: out1, per2: out2 });
+    }
+
+    const camp1 = REX_STRUCT_COST_BY_ALIVE[aliveA1].camp;
+    const camp2 = REX_STRUCT_COST_BY_ALIVE[aliveA2].camp;
+    for (let i=0;i<CITY_STRUCT.Rex.camps;i++){
+      work.push({ stage:2, key:`rex_camp_${i}`, labelBase:`Destroy Rex camp`, unitIndex:i, remaining: camp1, per1: camp1, per2: camp2 });
+    }
+
+    return work;
+  }
+
+  /**
+   * Spend some amount of budget into Rex work for a given round, respecting gating:
+   * - You can always spend into stage 0 first (if exists).
+   * - You can spend into stage 1 only after stage 0 complete (or if stage 0 doesn't exist).
+   * - You can spend into stage 2 only after stage 1 complete.
+   * Partial allowed for all work items.
+   *
+   * For stage 2 selection: choose items with smallest penalty (per1 - per2) first.
+   */
+  function spendRexForRound(workState, budget, round, aliveForLabel){
+    let spentTotal = 0;
+    const steps = [];
+
+    const spendInto = (item, amount, label) => {
+      const use = Math.min(amount, item.remaining);
+      if (use <= 0) return 0;
+      item.remaining -= use;
+      spentTotal += use;
+      const suffix = item.remaining > 0 ? " (partial)" : "";
+      steps.push({ label: `${label}${suffix}`, spent: use });
+      return use;
+    };
+
+    // Gate stage 0 (kraken)
+    const gate0 = workState.find(x=>x.stage===0);
+    if (gate0 && gate0.remaining > 0 && budget > 0){
+      const used = spendInto(gate0, budget, gate0.label);
+      budget -= used;
+    }
+
+    // Gate stage 1 (barrier structure) only if stage0 complete or absent
+    const gate0Complete = !gate0 || gate0.remaining === 0;
+    const gate1 = workState.find(x=>x.stage===1);
+    if (gate0Complete && gate1.remaining > 0 && budget > 0){
+      const used = spendInto(gate1, budget, `Destroy Rex barrier structure`);
+      budget -= used;
+    }
+
+    // Stage 2 only if gate1 complete
+    const gate1Complete = gate1.remaining === 0;
+    if (gate0Complete && gate1Complete && budget > 0){
+      const stage2 = workState.filter(x=>x.stage===2 && x.remaining > 0);
+
+      // sort by penalty (per1 - per2), smallest first
+      stage2.sort((a,b)=>{
+        const pa = (a.per1 - a.per2);
+        const pb = (b.per1 - b.per2);
+        if (pa !== pb) return pa - pb;
+        // tie-break: prefer defenders before structures (just to be consistent)
+        const ka = a.key.startsWith("rex_def_") ? 0 : 1;
+        const kb = b.key.startsWith("rex_def_") ? 0 : 1;
+        return ka - kb;
+      });
+
+      for (const it of stage2){
+        if (budget <= 0) break;
+        // label with aliveSub for this round
+        let lbl = it.labelBase ? `${it.labelBase} (aliveSub=${aliveForLabel})` : it.label;
+        const used = spendInto(it, budget, lbl);
+        budget -= used;
+      }
+    }
+
+    return { spentTotal, steps, unusedBudget: budget };
+  }
+
+  /** Compute remaining Rex cost in a future round (using per2 for stage2 items; gate costs are raw remaining) */
+  function computeRexRemainingCostForRound2(workState){
+    let total = 0;
+    for (const it of workState){
+      if (it.stage === 0 || it.stage === 1){
+        total += it.remaining; // raw
+      } else {
+        // stage2 remaining is stored in "R1 units"; convert proportionally to R2:
+        // If partially done, remaining fraction = it.remaining / it.per1, so remaining R2 cost = frac * it.per2
+        const frac = (it.per1 > 0) ? (it.remaining / it.per1) : 0;
+        total += frac * it.per2;
+      }
+    }
+    return total;
+  }
+
+  /** subsets */
+  function allSubsets(arr){
+    const out = [];
+    const n = arr.length;
+    for (let mask=0; mask < (1<<n); mask++){
+      const s = [];
+      for (let i=0;i<n;i++) if (mask & (1<<i)) s.push(arr[i]);
+      out.push(s);
+    }
+    return out;
+  }
+
+  function computeBestPlan(){
+    for (const city of CITY_ORDER){
+      const setup = getCitySetup(city);
+      const used = totalDefenders(setup);
+      if (used > CITY_LIMITS[city]) return { ok:false, error:`${city} has too many defenders (${used}/${CITY_LIMITS[city]}).` };
+    }
+
+    const attackers = clampInt(parseInt(document.getElementById("attackers").value,10), 1, 999999);
+    const perRound = attackers * ATTACKS_PER_ATTACKER_PER_ROUND;
+    const totalAvailable = perRound * 2;
+
+    const setups = {
+      Astra: getCitySetup("Astra"),
+      Luna:  getCitySetup("Luna"),
+      Sola:  getCitySetup("Sola"),
+      Rex:   getCitySetup("Rex")
+    };
+
+    const cityClear = {};
+    for (const c of SUBCITIES) cityClear[c] = fullClearSubcity(c, setups[c]);
+
+    const S1s = allSubsets(SUBCITIES);
+    let best = null;
+
+    for (const S1 of S1s){
+      const costS1 = S1.reduce((a,c)=>a + cityClear[c].total, 0);
+      if (costS1 > perRound) continue;
+
+      const remAfterS1 = SUBCITIES.filter(c=>!S1.includes(c));
+      const S2s = allSubsets(remAfterS1);
+
+      for (const S2 of S2s){
+        const costS2 = S2.reduce((a,c)=>a + cityClear[c].total, 0);
+        if (costS2 > perRound) continue;
+
+        const aliveA1 = 3 - S1.length;
+        const aliveA2 = 3 - S1.length - S2.length;
+
+        const b1Rex = perRound - costS1;
+        const b2Rex = perRound - costS2;
+
+        // Build Rex state and simulate Round 1 spending (MUST spend all b1Rex into Rex progress)
+        const rexState = buildRexWork(setups.Rex, aliveA1, aliveA2);
+
+        const r1Spend = spendRexForRound(rexState, b1Rex, 1, aliveA1);
+
+        // Force: Round 1 must have no slack -> any unused Rex budget would only happen if Rex is fully dead
+        // (rare, but then waste is unavoidable)
+        const slackR1 = (r1Spend.unusedBudget > 0) ? r1Spend.unusedBudget : 0;
+
+        // Now compute minimum remaining Rex requirement in Round 2
+        const rexRemainingR2 = computeRexRemainingCostForRound2(rexState);
+
+        // Round 2 can also spend all budget, but success requires rexRemainingR2 <= b2Rex
+        if (rexRemainingR2 > b2Rex + 1e-9) continue;
+
+        // Simulate Round 2 spending order (subcities first then Rex)
+        const r2RexState = rexState; // continue
+        const r2Spend = spendRexForRound(r2RexState, b2Rex, 2, aliveA2);
+        // After Round 2 spend, Rex must be dead (allow small float)
+        const rexLeftAfterR2 = computeRexRemainingCostForRound2(r2RexState);
+        if (rexLeftAfterR2 > 1e-6) continue;
+
+        const rexR1 = r1Spend.spentTotal;
+        const rexR2 = b2Rex - r2Spend.unusedBudget; // how much Rex we actually used in R2
+        const totalUseful = costS1 + costS2 + rexR1 + rexR2;
+        if (totalUseful > totalAvailable + 1e-9) continue;
+
+        const slackR2 = r2Spend.unusedBudget;
+        const slackTotal = totalAvailable - totalUseful;
+
+        const score = { totalUseful, slackTotal, slackR2 };
+
+        const isBetter = (!best)
+                || score.totalUseful < best.score.totalUseful
+                || (score.totalUseful === best.score.totalUseful && score.slackTotal > best.score.slackTotal)
+                || (score.totalUseful === best.score.totalUseful && score.slackTotal === best.score.slackTotal && score.slackR2 > best.score.slackR2);
+
+        if (!isBetter) continue;
+
+        // Build steps
+        const r1Steps = [];
+        const r2Steps = [];
+
+        for (const c of SUBCITIES){
+          if (!S1.includes(c)) continue;
+          r1Steps.push(...cityClear[c].parts.map(p=>({ label:p.label, spent:p.cost })));
+        }
+        r1Steps.push(...r1Spend.steps);
+
+        for (const c of SUBCITIES){
+          if (!S2.includes(c)) continue;
+          r2Steps.push(...cityClear[c].parts.map(p=>({ label:p.label, spent:p.cost })));
+        }
+        r2Steps.push(...r2Spend.steps);
+
+        best = {
+          ok:true,
+          score,
+          attackers,
+          perRound,
+          totalAvailable,
+          S1, S2,
+          aliveA1, aliveA2,
+          costS1, costS2,
+          rexR1,
+          rexR2,
+          rexRemainingAfterR1: rexRemainingR2,
+          slackR1,
+          slackR2,
+          slackTotal,
+          totalUseful,
+          r1Steps,
+          r2Steps
+        };
+      }
+    }
+
+    if (!best) return { ok:false, error:"No feasible plan found under the updated Rex gating + partial damage rules within 2 rounds." };
+    return best;
+  }
+
+  function render(){
+    const status = document.getElementById("status");
+    const out = document.getElementById("out");
+
+    const res = computeBestPlan();
+    if (!res.ok){
+      status.innerHTML = `<span class="bad">Not feasible</span> — ${res.error}`;
+      out.textContent = res.error;
+      return;
+    }
+
+    const lines = [];
+    lines.push(`Feasible: YES`);
+    lines.push(`Best plan (calculated):`);
+    lines.push(`  Round 1 destroy: [${res.S1.join(", ") || "none"}], then dump ALL remaining Round-1 attacks into Rex (aliveSub=${res.aliveA1})`);
+    lines.push(`  Round 2 destroy: [${res.S2.join(", ") || "none"}], then finish Rex (aliveSub=${res.aliveA2})`);
+    lines.push("");
+
+    lines.push(`Budgets:`);
+    lines.push(`  Attackers: ${res.attackers}`);
+    lines.push(`  Per-round budget: ${res.perRound} (attackers × 10)`);
+    lines.push(`  Total available (2 rounds): ${res.totalAvailable}`);
+    lines.push("");
+
+    lines.push(`Round 1:`);
+    lines.push(`  Subcity cost: ${res.costS1}`);
+    lines.push(`  Rex progress in R1 (aliveSub=${res.aliveA1}): ${res.rexR1}`);
+    lines.push(`  Attacks used: ${res.costS1 + res.rexR1} / ${res.perRound}`);
+    if (res.slackR1 > 0){
+      lines.push(`  NOTE: Round 1 has unavoidable waste (Rex already dead before spending finished): ${res.slackR1}`);
+    } else {
+      lines.push(`  Slack (unused): 0 (dumped into Rex progress)`);
+    }
+    lines.push(`  Rex remaining after Round 1 (needed in Round 2): ${Math.round(res.rexRemainingAfterR1 * 1000)/1000}`);
+    lines.push("");
+    lines.push(`  Round 1 attack order (key points):`);
+    for (const step of res.r1Steps) lines.push(`    - ${step.label}: ${step.spent} attacks`);
+
+    lines.push("");
+    lines.push(`Round 2:`);
+    lines.push(`  Subcity cost: ${res.costS2}`);
+    lines.push(`  Rex finish in R2 (aliveSub=${res.aliveA2}): ${res.rexR2}`);
+    lines.push(`  Attacks used: ${res.costS2 + res.rexR2} / ${res.perRound}`);
+    lines.push(`  Slack (unused): ${res.slackR2}`);
+    lines.push("");
+    lines.push(`  Round 2 attack order (key points):`);
+    for (const step of res.r2Steps) lines.push(`    - ${step.label}: ${step.spent} attacks`);
+
+    lines.push("");
+    lines.push(`Totals:`);
+    lines.push(`  Total attacks required to win (useful): ${Math.round(res.totalUseful * 1000)/1000}`);
+    lines.push(`  Total slack over 2 rounds: ${Math.round(res.slackTotal * 1000)/1000}`);
+
+    status.innerHTML = `<span class="ok">Feasible</span> — Rex barrier structure is now gated after Rex barrier Kraken, and partial damage carries across rounds.`;
+    out.textContent = lines.join("\n");
+  }
+
+  mountUI();
+  document.getElementById("calcBtn").addEventListener("click", render);
+</script>
+</body>
+</html>
