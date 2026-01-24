@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>GVG Optimal Attack Planner</title>
+  <title>GVG Attack Planner</title>
   <style>
     :root{
       --border:#e6e6e7; --text:#111; --muted:#666; --bg:#fff;
@@ -14,10 +14,9 @@
     body{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:14px; color:var(--text); background:var(--bg); }
     h1{ margin:0 0 10px; font-size:18px; }
     h2{ margin:14px 0 8px; font-size:15px; }
-    .muted{ color:var(--muted); font-size:12px; line-height:1.35; }
     .card{ border:1px solid var(--border); border-radius:14px; padding:12px; margin:10px 0; background:#fff; box-shadow:0 1px 0 rgba(0,0,0,.03); }
     label{ display:block; font-size:12px; margin-bottom:6px; }
-    input, select{
+    select{
       width:100%;
       padding:10px 12px;
       border:1px solid #d7d7da;
@@ -37,9 +36,16 @@
       cursor:pointer;
     }
     button:hover{ opacity:.92; }
-    pre{ background:#0b0b0b; color:#eaeaea; padding:12px; border-radius:14px; overflow:auto; white-space:pre-wrap; font-size:12px; }
+    pre{
+      background:#0b0b0b; color:#eaeaea;
+      padding:12px; border-radius:14px;
+      overflow:auto; white-space:pre-wrap;
+      font-size:12px; word-break:break-word;
+      margin:0;
+    }
     .ok{ color:#0b7a0b; font-weight:700; }
     .bad{ color:#b00020; font-weight:700; }
+    .muted{ color:var(--muted); font-size:12px; }
 
     .cityCard{ border-left:8px solid transparent; }
     .cityCard.astra{ border-left-color:var(--astra); }
@@ -48,11 +54,8 @@
     .cityCard.rex{ border-left-color:var(--rex); }
 
     .cityHeader{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:10px;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; margin-bottom:10px; flex-wrap:wrap;
     }
     .cityTitle{
       display:flex; align-items:center; gap:10px;
@@ -65,7 +68,6 @@
     .dot.rex{ background:var(--rex); }
     .slots{ font-size:12px; color:var(--muted); white-space:nowrap; }
 
-    /* Layout */
     .row{ display:grid; grid-template-columns: 1fr; gap:10px; }
     @media (min-width: 900px){
       body{ margin:18px; }
@@ -77,83 +79,133 @@
     .helperLine.ok{ color:#0b7a0b; }
     .helperLine.bad{ color:#b00020; }
 
-    /* compact dropdown line for 3w/2w/1w/0w */
     .kLine{
       display:grid;
       grid-template-columns: repeat(4, minmax(0,1fr));
       gap:8px;
       margin-top:10px;
     }
+    @media (max-width: 520px){
+      .kLine{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
     .kField label{
       margin-bottom:4px;
       font-size:11px;
-      display:flex;
-      align-items:center;
-      gap:6px;
+      display:flex; align-items:center; gap:6px;
       white-space:nowrap;
     }
-    .kField select{
-      padding:8px 10px;
-      border-radius:10px;
-      font-size:13px;
-    }
+    .kField select{ padding:8px 10px; border-radius:10px; font-size:13px; }
     .kd{ width:10px; height:10px; border-radius:999px; display:inline-block; }
     .kd.w3{ background:var(--w3); }
     .kd.w2{ background:var(--w2); }
     .kd.w1{ background:var(--w1); }
     .kd.w0{ background:var(--w0); }
+
+    .tabs{ display:flex; gap:8px; flex-wrap:wrap; }
+    .tabBtn{
+      flex:1; min-width:110px;
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#f6f6f7;
+      font-weight:800;
+      cursor:pointer;
+      text-align:center;
+      user-select:none;
+    }
+    .tabBtn.active{ background:#111; color:#fff; border-color:#111; }
+    .tabPanel{ display:none; margin-top:10px; }
+    .tabPanel.active{ display:block; }
+
+    .miniGrid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap:8px;
+      margin-top:10px;
+      margin-bottom:10px;
+    }
+    @media (max-width: 520px){
+      .miniGrid{ grid-template-columns: 1fr; }
+    }
+    .miniBox{
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px;
+      background:#fcfcfd;
+      font-size:12px;
+    }
+    .miniBox b{ font-size:13px; }
   </style>
 </head>
 <body>
-  <h1>GVG Optimal Attack Planner</h1>
+  <h1>GVG Attack Planner</h1>
 
   <div class="card">
     <h2>Attackers</h2>
-    <div class="row">
-		<label>Number of attackers</label>
-		<select id="attackers"></select>
-    </div>
+    <label>Count</label>
+    <select id="attackers"></select>
   </div>
 
   <div class="card">
     <h2>City Setup</h2>
-    <div class="muted" style="margin-bottom:10px;">
-      Barrier Kraken must die first. Rex special gate: Rex barrier structure must be destroyed after Rex barrier Kraken before any other Rex target is attackable.
-    </div>
     <div id="cities"></div>
     <div style="margin-top:10px;">
-      <button id="calcBtn">Calculate best plan</button>
+      <button id="calcBtn">Calculate</button>
     </div>
   </div>
 
   <div class="card">
-    <h2>Output</h2>
-    <div id="status" class="muted">Press “Calculate best plan”.</div>
-    <pre id="out"></pre>
+    <h2>Plans</h2>
+    <div class="tabs">
+      <div class="tabBtn active" data-tab="k1">1 Subcity</div>
+      <div class="tabBtn" data-tab="k2">2 Subcities</div>
+      <div class="tabBtn" data-tab="k3">3 Subcities</div>
+    </div>
+
+    <div id="status" class="muted" style="margin-top:8px;">Press “Calculate”.</div>
+
+    <div id="k1" class="tabPanel active">
+      <div class="miniGrid" id="k1_boxes"></div>
+      <pre id="k1_out"></pre>
+    </div>
+
+    <div id="k2" class="tabPanel">
+      <div class="miniGrid" id="k2_boxes"></div>
+      <pre id="k2_out"></pre>
+    </div>
+
+    <div id="k3" class="tabPanel">
+      <div class="miniGrid" id="k3_boxes"></div>
+      <pre id="k3_out"></pre>
+    </div>
   </div>
 
 <script>
-/** ------------------------
- *  Core rules (unchanged)
- *  ------------------------
- */
+/* =======================
+   TABLES
+   ======================= */
 const ATTACKS_PER_ATTACKER_PER_ROUND = 10;
 
 const NORMAL_DEF_COST = { "3w":10, "2w":15, "1w":20, "0w":60 };
+
 const REX_OTHER_DEF_COST_BY_ALIVE = {
   3: { "3w":100, "2w":150, "1w":200, "0w":600 },
   2: { "3w":25,  "2w":38,  "1w":50,  "0w":150 },
   1: { "3w":15,  "2w":22,  "1w":28,  "0w":75  },
   0: { "3w":10,  "2w":15,  "1w":20,  "0w":60  }
 };
+
 const CITY_STRUCT = {
   Astra: { outposts:7, camps:3, barrier:1 },
   Luna:  { outposts:7, camps:3, barrier:1 },
   Sola:  { outposts:9, camps:3, barrier:1 },
   Rex:   { outposts:11, camps:3, barrier:1 }
 };
+
 const CITY_LIMITS = { Astra:11, Luna:11, Sola:13, Rex:15 };
+
 const STRUCT_COST = { outpost:5, camp:10, barrier:5 };
+
 const REX_STRUCT_COST_BY_ALIVE = {
   3: { outpost:50, camp:100, barrier:5 },
   2: { outpost:13, camp:25,  barrier:5 },
@@ -166,12 +218,11 @@ const CITY_ORDER = ["Astra","Luna","Sola","Rex"];
 const SUBCITIES = ["Astra","Luna","Sola"];
 const CITY_CLASS = { Astra:"astra", Luna:"luna", Sola:"sola", Rex:"rex" };
 
-/** ------------------------
- *  Dropdown helpers
- *  ------------------------
- */
+/* =======================
+   UI
+   ======================= */
 function optionList(max, selected){
-  let html = "";
+  let html="";
   for (let i=0;i<=max;i++){
     html += `<option value="${i}" ${i===selected?"selected":""}>${i}</option>`;
   }
@@ -188,11 +239,11 @@ function attackersOptions(){
 function barrierSelect(id){
   return `
     <select id="${id}">
-      <option value="none">No barrier Kraken</option>
-      <option value="3w">Barrier 3w</option>
-      <option value="2w">Barrier 2w</option>
-      <option value="1w">Barrier 1w</option>
-      <option value="0w">Barrier 0w</option>
+      <option value="none">No barrier</option>
+      <option value="3w">3w</option>
+      <option value="2w">2w</option>
+      <option value="1w" selected>1w</option>
+      <option value="0w">0w</option>
     </select>
   `;
 }
@@ -214,7 +265,6 @@ function cityBlock(name){
 
         <div>
           <label>Other Krakens</label>
-
           <div class="kLine">
             <div class="kField">
               <label><span class="kd w3"></span>3w</label>
@@ -233,7 +283,6 @@ function cityBlock(name){
               <select id="${name}_other_0w"></select>
             </div>
           </div>
-
           <div class="helperLine" id="${name}_remaining"></div>
         </div>
       </div>
@@ -241,10 +290,9 @@ function cityBlock(name){
   `;
 }
 
-/** ------------------------
- *  Read state + slot checks
- *  ------------------------
- */
+/* =======================
+   INPUT STATE / SLOTS
+   ======================= */
 function clampInt(v, lo, hi){
   v = Number.isFinite(v) ? Math.floor(v) : lo;
   return Math.max(lo, Math.min(hi, v));
@@ -266,10 +314,8 @@ function totalDefenders(setup){
   return sum;
 }
 function updateDropdownMax(name){
-  // Reserve 1 slot for the barrier (even if "none"), so other max = total-1
   const limit = CITY_LIMITS[name];
   const maxOther = Math.max(0, limit - 1);
-
   for (const w of W_LEVELS){
     const el = document.getElementById(`${name}_other_${w}`);
     const cur = clampInt(parseInt(el.value,10), 0, 999);
@@ -288,74 +334,158 @@ function updateRemaining(name){
   const el = document.getElementById(`${name}_remaining`);
   if (remaining >= 0){
     el.className = "helperLine ok";
-    el.innerHTML = `Remaining slots: <b>${remaining}</b>`;
+    el.innerHTML = `Remaining: <b>${remaining}</b>`;
   } else {
     el.className = "helperLine bad";
-    el.innerHTML = `Too many Krakens — reduce by <b>${-remaining}</b>`;
+    el.innerHTML = `Too many — reduce <b>${-remaining}</b>`;
   }
 }
 
-/** ------------------------
- *  Calculation engine (same as before)
- *  ------------------------
- */
-function subcityStructureCost(city){
+/* =======================
+   SUBCITY (ORDER FIX)
+   barrier kraken -> barrier structure -> everything else
+   ======================= */
+function subcityOtherStructuresCost(city){
   const c = CITY_STRUCT[city];
-  return c.outposts*STRUCT_COST.outpost + c.camps*STRUCT_COST.camp + c.barrier*STRUCT_COST.barrier;
+  return c.outposts*STRUCT_COST.outpost + c.camps*STRUCT_COST.camp; // exclude barrier structure
 }
 function fullClearSubcity(city, setup){
   const parts = [];
   let total = 0;
 
+  // 1) barrier kraken
   if (setup.barrier){
     const cost = NORMAL_DEF_COST[setup.barrier];
-    parts.push({ label:`Kill ${city} barrier Kraken (${setup.barrier})`, cost });
+    parts.push({ label:`Kill ${city} barrier (${setup.barrier})`, cost });
     total += cost;
   }
+
+  // 2) barrier structure
+  parts.push({ label:`Destroy ${city} barrier structure`, cost: STRUCT_COST.barrier });
+  total += STRUCT_COST.barrier;
+
+  // 3) other krakens
   for (const w of W_LEVELS){
     const n = setup.other[w] || 0;
     if (n>0){
       const cost = n * NORMAL_DEF_COST[w];
-      parts.push({ label:`Kill ${city} ${w} Krakens ×${n}`, cost });
+      parts.push({ label:`Kill ${city} ${w} ×${n}`, cost });
       total += cost;
     }
   }
-  const structCost = subcityStructureCost(city);
-  parts.push({ label:`Destroy ${city} structures`, cost: structCost });
-  total += structCost;
+
+  // 4) remaining structures
+  const otherStruct = subcityOtherStructuresCost(city);
+  parts.push({ label:`Destroy ${city} outposts+camps`, cost: otherStruct });
+  total += otherStruct;
 
   return { total, parts };
 }
 
+// Partial work model for k=3 (same gate order)
+function buildSubcityWork(city, setup){
+  const work = [];
+
+  // stage0: barrier kraken
+  if (setup.barrier){
+    work.push({ stage:0, label:`Kill ${city} barrier (${setup.barrier})`, remaining: NORMAL_DEF_COST[setup.barrier] });
+  }
+
+  // stage1: barrier structure
+  work.push({ stage:1, label:`Destroy ${city} barrier structure`, remaining: STRUCT_COST.barrier });
+
+  // stage2: other krakens
+  for (const w of W_LEVELS){
+    const n = setup.other[w] || 0;
+    for (let i=0;i<n;i++){
+      work.push({ stage:2, label:`Kill ${city} ${w}`, remaining: NORMAL_DEF_COST[w] });
+    }
+  }
+
+  // stage3: other structures
+  const c = CITY_STRUCT[city];
+  for (let i=0;i<c.outposts;i++) work.push({ stage:3, label:`Destroy ${city} outpost`, remaining: STRUCT_COST.outpost });
+  for (let i=0;i<c.camps;i++)   work.push({ stage:3, label:`Destroy ${city} camp`,   remaining: STRUCT_COST.camp });
+
+  return work;
+}
+
+function spendSubcityForRound(work, budget){
+  let spent = 0;
+  const steps = [];
+
+  const spendInto = (item, amount) => {
+    const use = Math.min(amount, item.remaining);
+    if (use<=0) return 0;
+    item.remaining -= use;
+    spent += use;
+    steps.push({ label: item.label + (item.remaining>0 ? " (partial)" : ""), spent: use });
+    return use;
+  };
+
+  // stage0
+  const gate0 = work.find(x=>x.stage===0);
+  if (gate0 && gate0.remaining>0 && budget>0){
+    budget -= spendInto(gate0, budget);
+  }
+  const gate0Done = !gate0 || gate0.remaining===0;
+
+  // stage1 (barrier structure)
+  const gate1 = work.find(x=>x.stage===1);
+  if (gate0Done && gate1.remaining>0 && budget>0){
+    budget -= spendInto(gate1, budget);
+  }
+  const gate1Done = gate1.remaining===0;
+
+  // rest: stage2 then stage3 in list order
+  if (gate0Done && gate1Done && budget>0){
+    const rest = work.filter(x=>x.stage>=2 && x.remaining>0);
+    for (const it of rest){
+      if (budget<=0) break;
+      budget -= spendInto(it, budget);
+    }
+  }
+
+  const done = work.every(x=>x.remaining<=1e-9);
+  return { spent, steps, unused: budget, done };
+}
+
+/* =======================
+   REX (already correct gate order)
+   ======================= */
 function buildRexWork(setupRex, aliveA1, aliveA2){
   const work = [];
-  if (setupRex.barrier){
-    const cost = NORMAL_DEF_COST[setupRex.barrier];
-    work.push({ stage:0, key:"rex_gate_kraken", label:`Kill Rex barrier Kraken (${setupRex.barrier})`, remaining: cost });
-  }
-  const barrierStructCost = REX_STRUCT_COST_BY_ALIVE[aliveA1].barrier; // 5
-  work.push({ stage:1, key:"rex_gate_barrier_struct", label:`Destroy Rex barrier structure`, remaining: barrierStructCost });
 
+  // stage0: barrier kraken (NORMAL cost)
+  if (setupRex.barrier){
+    work.push({ stage:0, label:`Kill Rex barrier (${setupRex.barrier})`, remaining: NORMAL_DEF_COST[setupRex.barrier] });
+  }
+
+  // stage1: barrier structure (REX table)
+  work.push({ stage:1, label:`Destroy Rex barrier structure`, remaining: REX_STRUCT_COST_BY_ALIVE[aliveA1].barrier });
+
+  // stage2: other defenders (per alive)
   for (const w of W_LEVELS){
     const n = setupRex.other[w] || 0;
     if (n<=0) continue;
     const per1 = REX_OTHER_DEF_COST_BY_ALIVE[aliveA1][w];
     const per2 = REX_OTHER_DEF_COST_BY_ALIVE[aliveA2][w];
     for (let i=0;i<n;i++){
-      work.push({ stage:2, key:`rex_def_${w}_${i}`, labelBase:`Kill Rex ${w} Kraken`, w, remaining: per1, per1, per2 });
+      work.push({ stage:2, key:`def_${w}_${i}`, labelBase:`Kill Rex ${w}`, remaining: per1, per1, per2 });
     }
   }
 
+  // stage3: outposts + camps (per alive). (barrier structure already stage1)
   const out1 = REX_STRUCT_COST_BY_ALIVE[aliveA1].outpost;
   const out2 = REX_STRUCT_COST_BY_ALIVE[aliveA2].outpost;
   for (let i=0;i<CITY_STRUCT.Rex.outposts;i++){
-    work.push({ stage:2, key:`rex_outpost_${i}`, labelBase:`Destroy Rex outpost`, remaining: out1, per1: out1, per2: out2 });
+    work.push({ stage:3, key:`out_${i}`, labelBase:`Destroy Rex outpost`, remaining: out1, per1: out1, per2: out2 });
   }
 
   const camp1 = REX_STRUCT_COST_BY_ALIVE[aliveA1].camp;
   const camp2 = REX_STRUCT_COST_BY_ALIVE[aliveA2].camp;
   for (let i=0;i<CITY_STRUCT.Rex.camps;i++){
-    work.push({ stage:2, key:`rex_camp_${i}`, labelBase:`Destroy Rex camp`, remaining: camp1, per1: camp1, per2: camp2 });
+    work.push({ stage:3, key:`camp_${i}`, labelBase:`Destroy Rex camp`, remaining: camp1, per1: camp1, per2: camp2 });
   }
 
   return work;
@@ -364,6 +494,7 @@ function buildRexWork(setupRex, aliveA1, aliveA2){
 function spendRexForRound(workState, budget, aliveLabel){
   let spentTotal = 0;
   const steps = [];
+
   const spendInto = (item, amount, label) => {
     const use = Math.min(amount, item.remaining);
     if (use<=0) return 0;
@@ -373,50 +504,70 @@ function spendRexForRound(workState, budget, aliveLabel){
     return use;
   };
 
+  // stage0
   const gate0 = workState.find(x=>x.stage===0);
   if (gate0 && gate0.remaining>0 && budget>0){
-    const used = spendInto(gate0, budget, gate0.label);
-    budget -= used;
+    budget -= spendInto(gate0, budget, gate0.label);
   }
-  const gate0Complete = !gate0 || gate0.remaining===0;
-  const gate1 = workState.find(x=>x.stage===1);
-  if (gate0Complete && gate1.remaining>0 && budget>0){
-    const used = spendInto(gate1, budget, gate1.label);
-    budget -= used;
-  }
-  const gate1Complete = gate1.remaining===0;
+  const gate0Done = !gate0 || gate0.remaining===0;
 
-  if (gate0Complete && gate1Complete && budget>0){
+  // stage1
+  const gate1 = workState.find(x=>x.stage===1);
+  if (gate0Done && gate1.remaining>0 && budget>0){
+    budget -= spendInto(gate1, budget, gate1.label);
+  }
+  const gate1Done = gate1.remaining===0;
+
+  // stage2 then stage3
+  if (gate0Done && gate1Done && budget>0){
     const stage2 = workState.filter(x=>x.stage===2 && x.remaining>0);
+    // keep the old "best to push" sort inside defenders
     stage2.sort((a,b)=>{
       const da = (a.per1-a.per2), db = (b.per1-b.per2);
       if (da!==db) return da-db;
-      const pa = a.key.startsWith("rex_def_") ? 0 : 1;
-      const pb = b.key.startsWith("rex_def_") ? 0 : 1;
-      return pa-pb;
+      return 0;
     });
     for (const it of stage2){
       if (budget<=0) break;
-      const used = spendInto(it, budget, `${it.labelBase} (aliveSub=${aliveLabel})`);
-      budget -= used;
+      budget -= spendInto(it, budget, `${it.labelBase} (alive=${aliveLabel})`);
+    }
+    const stage3 = workState.filter(x=>x.stage===3 && x.remaining>0);
+    stage3.sort((a,b)=>{
+      const da = (a.per1-a.per2), db = (b.per1-b.per2);
+      if (da!==db) return da-db;
+      return 0;
+    });
+    for (const it of stage3){
+      if (budget<=0) break;
+      budget -= spendInto(it, budget, `${it.labelBase} (alive=${aliveLabel})`);
     }
   }
+
   return { spentTotal, steps, unusedBudget: budget };
 }
 
-function rexRemainingCostForRound2(workState){
-  let total=0;
-  for (const it of workState){
-    if (it.stage===0 || it.stage===1){
-      total += it.remaining;
-    } else {
-      const frac = it.per1>0 ? (it.remaining/it.per1) : 0;
-      total += frac * it.per2;
-    }
-  }
+function rexTotalCostAlive0(setupRex){
+  let total = 0;
+
+  // barrier kraken
+  if (setupRex.barrier) total += NORMAL_DEF_COST[setupRex.barrier];
+
+  // barrier structure (alive=0)
+  total += REX_STRUCT_COST_BY_ALIVE[0].barrier;
+
+  // other defenders (alive=0 uses original NORMAL values from table)
+  for (const w of W_LEVELS) total += (setupRex.other[w]||0) * REX_OTHER_DEF_COST_BY_ALIVE[0][w];
+
+  // outposts + camps (alive=0)
+  total += CITY_STRUCT.Rex.outposts * REX_STRUCT_COST_BY_ALIVE[0].outpost;
+  total += CITY_STRUCT.Rex.camps   * REX_STRUCT_COST_BY_ALIVE[0].camp;
+
   return total;
 }
 
+/* =======================
+   SUBSETS
+   ======================= */
 function allSubsets(arr){
   const out=[], n=arr.length;
   for (let mask=0; mask<(1<<n); mask++){
@@ -427,16 +578,228 @@ function allSubsets(arr){
   return out;
 }
 
-function computeBestPlan(){
+/* =======================
+   BEST FOR k=1/2
+   ======================= */
+function computeBestForK(setups, cityClear, perRound, k){
+  let best = null;
+
+  for (const S1 of allSubsets(SUBCITIES)){
+    if (S1.length > k) continue;
+    const costS1 = S1.reduce((a,c)=>a+cityClear[c].total,0);
+    if (costS1 > perRound) continue;
+
+    const remainingCities = SUBCITIES.filter(c=>!S1.includes(c));
+    const needInR2 = k - S1.length;
+
+    for (const S2 of allSubsets(remainingCities)){
+      if (S2.length !== needInR2) continue;
+      const costS2 = S2.reduce((a,c)=>a+cityClear[c].total,0);
+      if (costS2 > perRound) continue;
+
+      const aliveA1 = 3 - S1.length;
+      const aliveA2 = 3 - k;
+
+      const b1Rex = perRound - costS1;
+      const b2Rex = perRound - costS2;
+
+      const rexStateAfterR1 = buildRexWork(setups.Rex, aliveA1, aliveA2);
+      const r1Spend = spendRexForRound(rexStateAfterR1, b1Rex, aliveA1);
+
+      // Remaining Rex required in R2 (exact remaining in R2 units is hard with partial + per2; we show via R2 simulation)
+      // We'll simulate R2 spending in R2 "units" by rebuilding Rex at aliveA2 with the remaining fraction.
+      // Simpler + consistent: show what happens if you spend b2Rex in R2 after R1.
+      const rexR2State = (() => {
+        // Convert remaining from (aliveA1 units) into (aliveA2 units) by proportion per item.
+        const st = [];
+        for (const it of rexStateAfterR1){
+          if (it.stage===0 || it.stage===1){
+            st.push({ ...it });
+          } else {
+            const frac = it.per1>0 ? (it.remaining/it.per1) : 0;
+            const rem2 = frac * it.per2;
+            st.push({
+              stage: it.stage,
+              key: it.key,
+              labelBase: it.labelBase,
+              remaining: rem2,
+              per1: it.per2,
+              per2: it.per2
+            });
+          }
+        }
+        return st;
+      })();
+
+      const r2Spend = spendRexForRound(rexR2State, b2Rex, aliveA2);
+      const rexRemainAfterR2 = (() => {
+        let t=0;
+        for (const it of rexR2State) t += it.remaining;
+        return t;
+      })();
+
+      const r1Used = costS1 + r1Spend.spentTotal;
+      const r2UsedMax = costS2 + r2Spend.spentTotal;
+      const r2ReqToWin = costS2 + (b2Rex - r2Spend.unusedBudget) + rexRemainAfterR2; // sub + rexSpent + rexRemaining
+      const totalReq = r1Used + r2ReqToWin;
+
+      const feasible = (r2ReqToWin <= perRound + 1e-9);
+
+      const r2Over = Math.max(0, r2ReqToWin - perRound);
+      const r2Slack = Math.max(0, perRound - r2ReqToWin);
+
+      const r1Steps=[];
+      for (const c of SUBCITIES) if (S1.includes(c)) r1Steps.push(...cityClear[c].parts.map(p=>({label:p.label,spent:p.cost})));
+      r1Steps.push(...r1Spend.steps);
+
+      const r2Steps=[];
+      for (const c of SUBCITIES) if (S2.includes(c)) r2Steps.push(...cityClear[c].parts.map(p=>({label:p.label,spent:p.cost})));
+      r2Steps.push(...r2Spend.steps);
+      if (rexRemainAfterR2 > 1e-9){
+        r2Steps.push({ label:`Rex remaining after R2`, spent: Math.round(rexRemainAfterR2*1000)/1000 });
+      }
+
+      const better = (!best)
+        || (totalReq < best.totalReq - 1e-9)
+        || (Math.abs(totalReq-best.totalReq)<=1e-9 && (feasible && !best.feasible))
+        || (Math.abs(totalReq-best.totalReq)<=1e-9 && feasible===best.feasible && r2Over < best.r2Over - 1e-9)
+        || (Math.abs(totalReq-best.totalReq)<=1e-9 && feasible===best.feasible && Math.abs(r2Over-best.r2Over)<=1e-9 && r2Slack > best.r2Slack + 1e-9);
+
+      if (!better) continue;
+
+      best = {
+        k, S1, S2,
+        aliveA1, aliveA2,
+        r1Used,
+        r2Req: r2ReqToWin,
+        feasible,
+        totalReq,
+        r2Over, r2Slack,
+        r1Spend,
+        r1Steps, r2Steps
+      };
+    }
+  }
+
+  return best;
+}
+
+/* =======================
+   BEST FOR k=3 (FIXED TOTALS)
+   Rule: no Rex until all 3 subcities are down.
+   Total required = totalSubCost + totalRexCost(alive=0).
+   R1 uses up to perRound on subcities.
+   R2 uses remaining subcity cost first, then Rex (alive=0).
+   ======================= */
+function computeBestFor3(setups, perRound){
+  // Choose an order just for clean steps (cheapest first)
+  const full = {};
+  for (const c of SUBCITIES) full[c] = fullClearSubcity(c, setups[c]);
+  const order = SUBCITIES.slice().sort((a,b)=>full[a].total - full[b].total);
+
+  const totalSubCost = SUBCITIES.reduce((s,c)=>s + full[c].total, 0);
+  const totalRexCost = rexTotalCostAlive0(setups.Rex);
+  const totalReq = totalSubCost + totalRexCost;
+
+  // Build partial subcity work for step simulation
+  const work = {};
+  for (const c of SUBCITIES) work[c] = buildSubcityWork(c, setups[c]);
+
+  // Round 1: spend on subcities only (in order), no Rex
+  let b1 = perRound;
+  const r1Steps = [];
+  const doneR1 = new Set();
+
+  for (const c of order){
+    if (b1<=0) break;
+    const res = spendSubcityForRound(work[c], b1);
+    b1 = res.unused;
+    r1Steps.push(...res.steps);
+    if (res.done) doneR1.add(c);
+  }
+  const S1 = SUBCITIES.filter(c=>doneR1.has(c));
+
+  const r1Used = perRound - b1;
+  const r1Waste = b1; // cannot go to Rex in k=3 plan
+
+  // Round 2: finish remaining subcities first
+  let b2 = perRound;
+  const r2Steps = [];
+  const doneR2 = new Set(doneR1);
+
+  for (const c of order){
+    if (b2<=0) break;
+    if (doneR2.has(c)) continue;
+    const res = spendSubcityForRound(work[c], b2);
+    b2 = res.unused;
+    r2Steps.push(...res.steps);
+    if (res.done) doneR2.add(c);
+  }
+
+  const allSubDone = (doneR2.size === 3);
+  const subRemain = SUBCITIES.filter(c=>!doneR2.has(c));
+
+  // After subcities (if done), spend remaining b2 into Rex (alive=0)
+  let rexRemainAfterR2 = null;
+  if (allSubDone && b2 > 0){
+    const rexState = buildRexWork(setups.Rex, 0, 0);
+    const rexSpend = spendRexForRound(rexState, b2, 0);
+    r2Steps.push(...rexSpend.steps);
+
+    let rem = 0;
+    for (const it of rexState) rem += it.remaining;
+    rexRemainAfterR2 = rem;
+
+    if (rem > 1e-9){
+      r2Steps.push({ label:`Rex remaining after R2`, spent: Math.round(rem*1000)/1000 });
+    }
+  } else if (allSubDone) {
+    // no budget left for Rex at all
+    rexRemainAfterR2 = totalRexCost;
+    r2Steps.push({ label:`Rex remaining after R2`, spent: Math.round(totalRexCost*1000)/1000 });
+  }
+
+  // Required in R2 to win = remainingSubCostAfterR1 + totalRexCost
+  const subReqR2 = Math.max(0, totalSubCost - r1Used);
+  const r2Req = subReqR2 + totalRexCost;
+
+  const feasible = (totalSubCost <= 2*perRound + 1e-9) && (r2Req <= perRound + 1e-9);
+
+  return {
+    k:3,
+    order,
+    S1,
+    S2: SUBCITIES.filter(c=>doneR2.has(c) && !doneR1.has(c)),
+    r1Used,
+    r1Spend:{ spentTotal: r1Used, unusedBudget: r1Waste },
+    r2Req,
+    totalReq,
+    feasible,
+    r2Over: Math.max(0, r2Req - perRound),
+    r2Slack: Math.max(0, perRound - r2Req),
+    r1Steps,
+    r2Steps,
+    allSubDone,
+    subRemain
+  };
+}
+
+/* =======================
+   RENDER
+   ======================= */
+function fmt(n){ return String(Math.round(n*1000)/1000); }
+
+function computeRoutes(){
   for (const city of CITY_ORDER){
     const setup = getCitySetup(city);
     const used = totalDefenders(setup);
-    if (used > CITY_LIMITS[city]) return { ok:false, error:`${city} has too many Krakens (${used}/${CITY_LIMITS[city]}).` };
+    if (used > CITY_LIMITS[city]){
+      return { ok:false, error:`${city} too many (${used}/${CITY_LIMITS[city]}).` };
+    }
   }
 
   const attackers = clampInt(parseInt(document.getElementById("attackers").value,10), 1, 999999);
   const perRound = attackers * ATTACKS_PER_ATTACKER_PER_ROUND;
-  const totalAvailable = perRound * 2;
 
   const setups = {
     Astra: getCitySetup("Astra"),
@@ -444,145 +807,108 @@ function computeBestPlan(){
     Sola:  getCitySetup("Sola"),
     Rex:   getCitySetup("Rex")
   };
+
   const cityClear = {};
   for (const c of SUBCITIES) cityClear[c] = fullClearSubcity(c, setups[c]);
 
-  let best=null;
-  for (const S1 of allSubsets(SUBCITIES)){
-    const costS1 = S1.reduce((a,c)=>a+cityClear[c].total,0);
-    if (costS1>perRound) continue;
-
-    const rem = SUBCITIES.filter(c=>!S1.includes(c));
-    for (const S2 of allSubsets(rem)){
-      const costS2 = S2.reduce((a,c)=>a+cityClear[c].total,0);
-      if (costS2>perRound) continue;
-
-      const aliveA1 = 3 - S1.length;
-      const aliveA2 = 3 - S1.length - S2.length;
-
-      const b1Rex = perRound - costS1;
-      const b2Rex = perRound - costS2;
-
-      const rexState = buildRexWork(setups.Rex, aliveA1, aliveA2);
-
-      const r1Spend = spendRexForRound(rexState, b1Rex, aliveA1);
-
-      const rexNeedR2 = rexRemainingCostForRound2(rexState);
-      if (rexNeedR2 > b2Rex + 1e-9) continue;
-
-      const r2Spend = spendRexForRound(rexState, b2Rex, aliveA2);
-      const rexLeft = rexRemainingCostForRound2(rexState);
-      if (rexLeft > 1e-6) continue;
-
-      const rexR1 = r1Spend.spentTotal;
-      const rexR2 = b2Rex - r2Spend.unusedBudget;
-      const totalUseful = costS1 + costS2 + rexR1 + rexR2;
-      if (totalUseful > totalAvailable + 1e-9) continue;
-
-      const slackR2 = r2Spend.unusedBudget;
-      const slackTotal = totalAvailable - totalUseful;
-
-      const score = { totalUseful, slackTotal, slackR2 };
-      const better = (!best)
-        || score.totalUseful < best.score.totalUseful
-        || (score.totalUseful===best.score.totalUseful && score.slackTotal>best.score.slackTotal)
-        || (score.totalUseful===best.score.totalUseful && score.slackTotal===best.score.slackTotal && score.slackR2>best.score.slackR2);
-      if (!better) continue;
-
-      const r1Steps=[], r2Steps=[];
-      for (const c of SUBCITIES) if (S1.includes(c)) r1Steps.push(...cityClear[c].parts.map(p=>({label:p.label,spent:p.cost})));
-      r1Steps.push(...r1Spend.steps);
-
-      for (const c of SUBCITIES) if (S2.includes(c)) r2Steps.push(...cityClear[c].parts.map(p=>({label:p.label,spent:p.cost})));
-      r2Steps.push(...r2Spend.steps);
-
-      best = {
-        ok:true, score,
-        attackers, perRound, totalAvailable,
-        S1, S2, aliveA1, aliveA2,
-        costS1, costS2,
-        rexR1, rexR2,
-        rexRemainingAfterR1: rexNeedR2,
-        r1Waste: r1Spend.unusedBudget,
-        slackR2, slackTotal, totalUseful,
-        r1Steps, r2Steps
-      };
+  return {
+    ok:true,
+    perRound,
+    routes:{
+      1: computeBestForK(setups, cityClear, perRound, 1),
+      2: computeBestForK(setups, cityClear, perRound, 2),
+      3: computeBestFor3(setups, perRound)
     }
+  };
+}
+
+function fillPanel(k, plan, perRound){
+  const outEl = document.getElementById(`k${k}_out`);
+  const boxEl = document.getElementById(`k${k}_boxes`);
+
+  if (!plan){
+    boxEl.innerHTML = "";
+    outEl.textContent = "No plan found.";
+    return;
   }
 
-  if (!best) return { ok:false, error:"No feasible plan found under the updated rules within 2 rounds." };
-  return best;
+  boxEl.innerHTML = `
+    <div class="miniBox"><b>Feasible</b><div>${plan.feasible ? "YES" : "NO"}</div></div>
+    <div class="miniBox"><b>R2 Over</b><div>${plan.r2Over > 0 ? "+"+fmt(plan.r2Over) : "0"}</div></div>
+    <div class="miniBox"><b>R2 Slack</b><div>${plan.r2Slack > 0 ? fmt(plan.r2Slack) : "0"}</div></div>
+    <div class="miniBox"><b>Total Req</b><div>${fmt(plan.totalReq)}</div></div>
+  `;
+
+  const lines=[];
+  lines.push(`perRound=${perRound}`);
+
+  if (k === 3){
+    lines.push(`R1 subcities only`);
+    lines.push(`Order: ${plan.order.join(" -> ")}`);
+    lines.push(`R1 done: [${plan.S1.join(", ")||"none"}]`);
+    lines.push(`R2 finish subcities, then Rex (alive=0)`);
+    if (plan.subRemain.length) lines.push(`Remaining after R2: [${plan.subRemain.join(", ")}]`);
+  } else {
+    lines.push(`R1 destroy=[${plan.S1.join(", ")||"none"}], dump Rex (alive=${plan.aliveA1})`);
+    lines.push(`R2 destroy=[${plan.S2.join(", ")||"none"}], finish Rex (alive=${plan.aliveA2})`);
+  }
+
+  lines.push("");
+  lines.push(`R1 used: ${fmt(plan.r1Used)} / ${perRound} (waste=${fmt(plan.r1Spend.unusedBudget||0)})`);
+  lines.push(`R2 required: ${fmt(plan.r2Req)} / ${perRound}`);
+  lines.push(`Total required: ${fmt(plan.totalReq)}`);
+  lines.push("");
+  lines.push(`R1 steps:`);
+  for (const s of plan.r1Steps) lines.push(`- ${s.label}: ${fmt(s.spent)}`);
+  lines.push("");
+  lines.push(`R2 steps:`);
+  for (const s of plan.r2Steps) lines.push(`- ${s.label}: ${fmt(s.spent)}`);
+
+  outEl.textContent = lines.join("\n");
 }
 
 function render(){
   const status = document.getElementById("status");
-  const out = document.getElementById("out");
+  const res = computeRoutes();
 
-  const res = computeBestPlan();
   if (!res.ok){
-    status.innerHTML = `<span class="bad">Not feasible</span> — ${res.error}`;
-    out.textContent = res.error;
+    status.innerHTML = `<span class="bad">Error</span> — ${res.error}`;
+    ["k1","k2","k3"].forEach(id=>{
+      document.getElementById(`${id}_boxes`).innerHTML = "";
+      document.getElementById(`${id}_out`).textContent = res.error;
+    });
     return;
   }
 
-  const lines=[];
-  lines.push(`Feasible: YES`);
-  lines.push(`Best plan:`);
-  lines.push(`  Round 1 destroy: [${res.S1.join(", ")||"none"}], then dump remaining into Rex (aliveSub=${res.aliveA1})`);
-  lines.push(`  Round 2 destroy: [${res.S2.join(", ")||"none"}], then finish Rex (aliveSub=${res.aliveA2})`);
-  lines.push("");
-  lines.push(`Round 1 (budget ${res.perRound}):`);
-  lines.push(`  Subcity cost: ${res.costS1}`);
-  lines.push(`  Rex progress: ${res.rexR1}`);
-  lines.push(`  Attacks used: ${res.costS1 + res.rexR1} / ${res.perRound}`);
-  lines.push(`  Rex remaining after Round 1: ${Math.round(res.rexRemainingAfterR1*1000)/1000}`);
-  if (res.r1Waste>0) lines.push(`  NOTE: Unavoidable Round-1 waste (Rex already dead): ${res.r1Waste}`);
-  lines.push("");
-  lines.push(`  Round 1 attack order:`);
-  for (const s of res.r1Steps) lines.push(`    - ${s.label}: ${s.spent} attacks`);
+  status.innerHTML = `<span class="ok">OK</span> — perRound=${res.perRound}`;
 
-  lines.push("");
-  lines.push(`Round 2 (budget ${res.perRound}):`);
-  lines.push(`  Subcity cost: ${res.costS2}`);
-  lines.push(`  Rex finish: ${res.rexR2}`);
-  lines.push(`  Attacks used: ${res.costS2 + res.rexR2} / ${res.perRound}`);
-  lines.push(`  Slack after Rex dies: ${res.slackR2}`);
-  lines.push("");
-  lines.push(`  Round 2 attack order:`);
-  for (const s of res.r2Steps) lines.push(`    - ${s.label}: ${s.spent} attacks`);
-
-  lines.push("");
-  lines.push(`Totals:`);
-  lines.push(`  Total attacks required (useful): ${Math.round(res.totalUseful*1000)/1000}`);
-  lines.push(`  Total slack over 2 rounds: ${Math.round(res.slackTotal*1000)/1000}`);
-
-  status.innerHTML = `<span class="ok">Feasible</span>`;
-  out.textContent = lines.join("\n");
+  fillPanel(1, res.routes[1], res.perRound);
+  fillPanel(2, res.routes[2], res.perRound);
+  fillPanel(3, res.routes[3], res.perRound);
 }
 
-/** Mount */
+/* =======================
+   MOUNT
+   ======================= */
 function mount(){
   attackersOptions();
   document.getElementById("cities").innerHTML = CITY_ORDER.map(cityBlock).join("");
 
-  // Defaults
-  const defaultOther = {
-    Astra:{ "3w":9,"2w":0,"1w":0,"0w":0 },
-    Luna: { "3w":9,"2w":0,"1w":0,"0w":0 },
-    Sola: { "3w":8,"2w":0,"1w":0,"0w":0 },
-    Rex:  { "3w":14,"2w":0,"1w":0,"0w":0 },
+  const defaults = {
+    Astra:{ barrier:"1w", other:{ "3w":9,"2w":0,"1w":0,"0w":0 } },
+    Luna: { barrier:"1w", other:{ "3w":9,"2w":0,"1w":0,"0w":0 } },
+    Sola: { barrier:"1w", other:{ "3w":8,"2w":0,"1w":0,"0w":0 } },
+    Rex:  { barrier:"1w", other:{ "3w":14,"2w":0,"1w":0,"0w":0 } },
   };
 
   for (const name of CITY_ORDER){
-    document.getElementById(`${name}_barrier`).value = "1w";
-
-    // dropdown max = limit-1
     updateDropdownMax(name);
+    document.getElementById(`${name}_barrier`).value = defaults[name].barrier;
 
-    // set defaults after max
     const maxOther = Math.max(0, CITY_LIMITS[name]-1);
     for (const w of W_LEVELS){
-      document.getElementById(`${name}_other_${w}`).value = String(Math.min(defaultOther[name][w], maxOther));
+      const v = Math.min(defaults[name].other[w], maxOther);
+      document.getElementById(`${name}_other_${w}`).value = String(v);
     }
 
     const ids = [ `${name}_barrier`, `${name}_other_3w`, `${name}_other_2w`, `${name}_other_1w`, `${name}_other_0w` ];
@@ -594,6 +920,14 @@ function mount(){
   }
 
   document.getElementById("calcBtn").addEventListener("click", render);
+
+  document.querySelectorAll(".tabBtn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const tab = btn.getAttribute("data-tab");
+      document.querySelectorAll(".tabBtn").forEach(b=>b.classList.toggle("active", b===btn));
+      document.querySelectorAll(".tabPanel").forEach(p=>p.classList.toggle("active", p.id===tab));
+    });
+  });
 }
 
 mount();
