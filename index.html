@@ -189,10 +189,9 @@ const ATTACKS_PER_ATTACKER_PER_ROUND = 10;
 const NORMAL_DEF_COST = { "3w":10, "2w":15, "1w":20, "0w":60 };
 
 const REX_OTHER_DEF_COST_BY_ALIVE = {
-  3: { "3w":100, "2w":150, "1w":200, "0w":600 },
-  2: { "3w":25,  "2w":38,  "1w":50,  "0w":150 },
-  1: { "3w":15,  "2w":22,  "1w":28,  "0w":75  },
-  0: { "3w":10,  "2w":15,  "1w":20,  "0w":60  }
+  2: { "3w":25, "2w":38, "1w":50, "0w":150 },
+  1: { "3w":15, "2w":22, "1w":30, "0w":100 },
+  0: { "3w":10, "2w":15, "1w":20, "0w":60 }
 };
 
 const CITY_STRUCT = {
@@ -207,7 +206,6 @@ const CITY_LIMITS = { Astra:11, Luna:11, Sola:13, Rex:15 };
 const STRUCT_COST = { outpost:5, camp:10, barrier:5 };
 
 const REX_STRUCT_COST_BY_ALIVE = {
-  3: { outpost:50, camp:100, barrier:5 },
   2: { outpost:13, camp:25,  barrier:5 },
   1: { outpost:8,  camp:15,  barrier:5 },
   0: { outpost:5,  camp:10,  barrier:5 }
