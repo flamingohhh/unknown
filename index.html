@@ -598,7 +598,7 @@ function computeBestForK(setups, cityClear, perRound, k){
       const aliveA1 = 3 - S1.length;
       const aliveA2 = 3 - k;
 
-      if (aliveA1 === 3 || aliveA2 === 3) continue;
+      if (aliveA1 === 3) continue;
 
       const b1Rex = perRound - costS1;
       const b2Rex = perRound - costS2;
